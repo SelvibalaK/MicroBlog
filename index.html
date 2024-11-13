@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>✨ MicroBlog</title>
+    <style>
+        body { font-family: Arial; max-width: 500px; margin: 20px auto; background: #f5f5f5; }
+        .box { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, button { margin: 5px; padding: 8px; border-radius: 4px; }
+        button { background: #4CAF50; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="auth" class="box">
+        <h2>Register/Login</h2>
+        <input id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="register()">Register</button>
+        <button onclick="login()">Login</button>
+    </div>
+
+    <div id="app" style="display:none">
+        <div class="box">
+            <input id="content" placeholder="Your message">
+            <button onclick="post()">Post</button>
+        </div>
+        <div id="posts"></div>
+    </div>
+
+    <script>
+        let userId = '';
+        let username = '';
+
+        async function register() {
+            username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            await fetch('/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            login();
+        }
+
+        async function login() {
+            username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            }).then(r => r.json());
+            if(res.userId) {
+                userId = res.userId;
+                document.getElementById('auth').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+                loadPosts();
+            }
+        }
+
+        async function post() {
+            const content = document.getElementById('content').value;
+            await fetch('/post', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, username, userId })
+            });
+            document.getElementById('content').value = '';
+            loadPosts();
+        }
+
+        async function deletePost(id) {
+            await fetch(`/post/${id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            loadPosts();
+        }
+
+        async function loadPosts() {
+            const posts = await fetch('/posts').then(r => r.json());
+            document.getElementById('posts').innerHTML = posts
+                .map(post => `
+                    <div class="box">
+                        <strong>${post.username}</strong>
+                        <p>${post.content}</p>
+                        ${post.userId === userId ? 
+                            `<button onclick="deletePost('${post._id}')">Delete</button>` : 
+                            ''}
+                    </div>
+                `).join('');
+        }
+    </script>
+</body>
+</html>
